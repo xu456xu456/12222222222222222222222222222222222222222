@@ -11,3 +11,69 @@
   <p>Redirecting to <a href="/tools/ip-lookup/">/tools/ip-lookup/</a>…</p>
 </body>
 </html>
+<script>
+(function(){
+  function computeBase(){
+    var parts = location.pathname.split('/').filter(Boolean);
+    // Project pages: first segment is repo name (e.g., /updatetool/...)
+    var base = '/';
+    if (parts.length >= 1) {
+      base = '/' + parts[0] + '/';
+    }
+    return base;
+  }
+  var BASE = computeBase();
+  window.__SITE_BASE__ = BASE;
+
+  // Prevent duplicate "网络工具" injection
+  if (!window.__internetToolsInjectedGuarded){
+    var origInsert = window.insertInternetTools;
+    window.insertInternetTools = function(){
+      if (window.__internetToolsInjected) return;
+      window.__internetToolsInjected = true;
+      if (typeof origInsert === 'function') return origInsert();
+    };
+    window.__internetToolsInjectedGuarded = true;
+  }
+
+  function normalizeAnchors(){
+    var sel = document.querySelectorAll('a[href]');
+    sel.forEach(function(a){
+      var href = a.getAttribute('href');
+      if (!href || /^https?:\/\//i.test(href) || href[0]==='#') return;
+      // Fix tools links
+      if (/dns-?check/i.test(href)) a.setAttribute('href', BASE + 'tools/dns-check/');
+      if (/speed-?test/i.test(href)) a.setAttribute('href', BASE + 'tools/speed-test/');
+      if (/ip-lookup/i.test(href))   a.setAttribute('href', BASE + 'tools/ip-lookup/');
+      // Fix 'index.html' pointing to site root
+      if (/^\/?index\.html$/i.test(href) || href === '/' ) a.setAttribute('href', BASE);
+    });
+  }
+
+  function patchGame(){
+    if (typeof window.showModalWithGame === 'function'){
+      var orig = window.showModalWithGame;
+      window.showModalWithGame = function(gamePath){
+        var p = gamePath || 'game1.html';
+        if (!/^https?:\/\//i.test(p)){
+          p = BASE + p.replace(/^\//,'');
+        }
+        return orig(p);
+      };
+    }
+  }
+
+  function run(){
+    normalizeAnchors();
+    patchGame();
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+  // Run again after load to catch late DOM injections
+  window.addEventListener('load', function(){ setTimeout(run, 0); setTimeout(run, 500); });
+})();
+</script>
